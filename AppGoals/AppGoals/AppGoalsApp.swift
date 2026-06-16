@@ -9,9 +9,24 @@ import SwiftUI
 
 @main
 struct AppGoalsApp: App {
+    @State private var model = AppModel()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .environment(model)
+        }
+    }
+}
+
+struct RootView: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if model.hasCredentials {
+            DashboardView()
+        } else {
+            SetupView()
         }
     }
 }

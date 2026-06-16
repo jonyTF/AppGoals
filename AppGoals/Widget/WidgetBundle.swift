@@ -9,10 +9,8 @@ import WidgetKit
 import SwiftUI
 
 @main
-struct WidgetBundle: WidgetBundle {
+struct GoalWidgetBundle: WidgetBundle {
     var body: some Widget {
-        Widget()
-        WidgetControl()
-        WidgetLiveActivity()
+        GoalProgressWidget()
     }
 }

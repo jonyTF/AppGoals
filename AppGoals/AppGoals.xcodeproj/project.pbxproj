@@ -54,6 +54,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		0A1B2C3D4E5F607182930001 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
 		F1C710582FE1BB900026AA48 /* AppGoals */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = AppGoals;
@@ -94,6 +99,7 @@
 			children = (
 				F1C710582FE1BB900026AA48 /* AppGoals */,
 				F1C7106E2FE1BC230026AA48 /* Widget */,
+				0A1B2C3D4E5F607182930001 /* Shared */,
 				F1C710692FE1BC230026AA48 /* Frameworks */,
 				F1C710572FE1BB900026AA48 /* Products */,
 			);
@@ -136,6 +142,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				F1C710582FE1BB900026AA48 /* AppGoals */,
+				0A1B2C3D4E5F607182930001 /* Shared */,
 			);
 			name = AppGoals;
 			packageProductDependencies = (
@@ -158,6 +165,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				F1C7106E2FE1BC230026AA48 /* Widget */,
+				0A1B2C3D4E5F607182930001 /* Shared */,
 			);
 			name = WidgetExtension;
 			packageProductDependencies = (
@@ -373,6 +381,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = AppGoals.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3ZB3CDJ3AW;
@@ -405,6 +414,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = AppGoals.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3ZB3CDJ3AW;
@@ -437,6 +447,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = Widget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3ZB3CDJ3AW;
@@ -467,6 +478,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = Widget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3ZB3CDJ3AW;

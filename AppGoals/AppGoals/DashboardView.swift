@@ -129,35 +129,42 @@ struct GoalCard: View {
     }
 
     var body: some View {
-        HStack(spacing: 18) {
-            ProgressRing(progress: progress, lineWidth: 12, tint: tint)
-                .frame(width: 96, height: 96)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(goal.metricName)
-                    .font(.headline)
-                Text("\(OverviewMetric.format(value: current, isCurrency: goal.isCurrency, unit: goal.unit)) of \(goal.formattedTarget)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Label(pace.label, systemImage: paceIcon)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(goal.metricName)
+                        .font(.headline)
+                    Text("\(OverviewMetric.format(value: current, isCurrency: goal.isCurrency, unit: goal.unit)) of \(goal.formattedTarget)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Text(progress, format: .percent.precision(.fractionLength(0)))
+                    .font(.title2.bold())
+                    .monospacedDigit()
+                    .foregroundStyle(tint)
+            }
+
+            LabeledProgressBar(
+                progress: progress,
+                startText: OverviewMetric.format(value: goal.startValue, isCurrency: goal.isCurrency, unit: goal.unit),
+                goalText: goal.formattedTarget,
+                tint: tint,
+                barHeight: 12
+            )
+
+            HStack(spacing: 6) {
+                Label(pace.label, systemImage: pace.systemImage)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(tint)
+                Spacer(minLength: 0)
                 Text(goal.daysRemaining == 0 ? "Due today" : "\(goal.daysRemaining) days left")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Spacer(minLength: 0)
         }
         .padding()
         .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 20))
-    }
-
-    private var paceIcon: String {
-        switch pace {
-        case .complete: return "checkmark.seal.fill"
-        case .ahead: return "arrow.up.right.circle.fill"
-        case .onTrack: return "equal.circle.fill"
-        case .behind: return "arrow.down.right.circle.fill"
-        }
     }
 }
 

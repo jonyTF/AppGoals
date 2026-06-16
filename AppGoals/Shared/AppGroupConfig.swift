@@ -31,5 +31,7 @@ enum AppGroupConfig {
         static let snapshot = "metrics.snapshot"
         static let goal = "active.goal"
         static let projectID = "revenuecat.projectID"
+        /// A project ID shared in from the Share Extension, awaiting pickup by the app.
+        static let pendingProjectID = "revenuecat.pendingProjectID"
     }
 }

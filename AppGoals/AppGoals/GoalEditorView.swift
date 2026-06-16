@@ -13,6 +13,7 @@ struct GoalEditorView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedMetricID: String
+    @State private var startText: String
     @State private var targetText: String
     @State private var targetDate: Date
 
@@ -20,7 +21,10 @@ struct GoalEditorView: View {
 
     init(existing: Goal?, metrics: [OverviewMetric]) {
         self.existing = existing
-        _selectedMetricID = State(initialValue: existing?.metricID ?? metrics.first?.id ?? "mrr")
+        let initialID = existing?.metricID ?? metrics.first?.id ?? "mrr"
+        let currentValue = metrics.first { $0.id == initialID }?.value
+        _selectedMetricID = State(initialValue: initialID)
+        _startText = State(initialValue: Self.plainNumber(existing?.startValue ?? currentValue ?? 0))
         _targetText = State(initialValue: existing.map { Self.plainNumber($0.targetValue) } ?? "")
         _targetDate = State(initialValue: existing?.targetDate ?? Date(timeIntervalSinceNow: 90 * 86_400))
     }
@@ -28,9 +32,11 @@ struct GoalEditorView: View {
     private var metrics: [OverviewMetric] { model.metrics }
     private var selectedMetric: OverviewMetric? { metrics.first { $0.id == selectedMetricID } }
     private var targetValue: Double? { Double(targetText.replacingOccurrences(of: ",", with: "")) }
+    private var startValue: Double? { Double(startText.replacingOccurrences(of: ",", with: "")) }
 
     private var canSave: Bool {
-        selectedMetric != nil && (targetValue ?? 0) > 0 && targetDate > Date()
+        guard selectedMetric != nil, let target = targetValue, let start = startValue else { return false }
+        return target > 0 && target != start && targetDate > Date()
     }
 
     var body: some View {
@@ -47,13 +53,34 @@ struct GoalEditorView: View {
                         LabeledContent("Current", value: m.formattedValue)
                     }
                 }
+                .onChange(of: selectedMetricID) { _, newID in
+                    // Rebase the starting value when switching metrics.
+                    if let value = metrics.first(where: { $0.id == newID })?.value {
+                        startText = Self.plainNumber(value)
+                    }
+                }
+
+                Section {
+                    HStack {
+                        currencyPrefix
+                        TextField("Starting value", text: $startText)
+                            .keyboardType(.decimalPad)
+                    }
+                    if let m = selectedMetric {
+                        Button("Use current value (\(m.formattedValue))") {
+                            startText = Self.plainNumber(m.value)
+                        }
+                        .font(.footnote)
+                    }
+                } header: {
+                    Text("Starting point")
+                } footer: {
+                    Text("Progress is measured from this value up to your target. Adjust it to set your own baseline.")
+                }
 
                 Section("Target") {
                     HStack {
-                        if selectedMetric?.isCurrency == true {
-                            Text(selectedMetric?.unit?.isEmpty == false ? selectedMetric!.unit! : "$")
-                                .foregroundStyle(.secondary)
-                        }
+                        currencyPrefix
                         TextField("Goal value", text: $targetText)
                             .keyboardType(.decimalPad)
                     }
@@ -63,7 +90,7 @@ struct GoalEditorView: View {
                 if let m = selectedMetric, let target = targetValue, target > 0 {
                     Section {
                         let preview = makePreviewGoal(metric: m, target: target)
-                        LabeledContent("From", value: m.formattedValue)
+                        LabeledContent("From", value: OverviewMetric.format(value: preview.startValue, isCurrency: m.isCurrency, unit: m.unit))
                         LabeledContent("To", value: preview.formattedTarget)
                         LabeledContent("Time left", value: "\(preview.daysRemaining) days")
                     } header: {
@@ -73,6 +100,7 @@ struct GoalEditorView: View {
             }
             .navigationTitle(existing == nil ? "New Goal" : "Edit Goal")
             .navigationBarTitleDisplayMode(.inline)
+            .dismissKeyboardSupport()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -84,6 +112,14 @@ struct GoalEditorView: View {
         }
     }
 
+    @ViewBuilder
+    private var currencyPrefix: some View {
+        if selectedMetric?.isCurrency == true {
+            Text(selectedMetric?.unit?.isEmpty == false ? selectedMetric!.unit! : "$")
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private func makePreviewGoal(metric: OverviewMetric, target: Double) -> Goal {
         Goal(
             id: existing?.id ?? UUID(),
@@ -92,7 +128,7 @@ struct GoalEditorView: View {
             isCurrency: metric.isCurrency,
             unit: metric.unit,
             targetValue: target,
-            startValue: existing?.startValue ?? metric.value,
+            startValue: startValue ?? existing?.startValue ?? metric.value,
             startDate: existing?.startDate ?? Date(),
             targetDate: targetDate
         )

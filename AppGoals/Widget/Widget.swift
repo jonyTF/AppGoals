@@ -32,8 +32,10 @@ struct Provider: TimelineProvider {
         Task {
             let snapshot = await freshSnapshot()
             let entry = makeEntry(allowNetwork: true, snapshot: snapshot)
-            // Refresh roughly hourly; metrics don't move minute-to-minute.
-            let next = Calendar.current.date(byAdding: .minute, value: 60, to: Date()) ?? Date().addingTimeInterval(3600)
+            // Ask WidgetKit to rebuild the timeline (and re-fetch) every 15 minutes.
+            // iOS budgets background widget refreshes, so it may space these out
+            // further under load, but this requests the fastest practical cadence.
+            let next = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date().addingTimeInterval(900)
             completion(Timeline(entries: [entry], policy: .after(next)))
         }
     }
@@ -114,23 +116,42 @@ struct GoalWidgetView: View {
         .containerBackground(.fill.tertiary, for: .widget)
     }
 
-    // Home screen — medium
+    // Home screen — medium (mirrors the in-app goal card)
     private var medium: some View {
         Group {
             if let goal = entry.goal {
-                HStack(spacing: 16) {
-                    ProgressRing(progress: progress, lineWidth: 12, tint: tint)
-                        .frame(width: 90, height: 90)
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(goal.metricName).font(.headline)
-                        Text("\(OverviewMetric.format(value: entry.current, isCurrency: goal.isCurrency, unit: goal.unit)) of \(goal.formattedTarget)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        if let pace { Text(pace.label).font(.caption.weight(.semibold)).foregroundStyle(tint) }
-                        Text(goal.daysRemaining == 0 ? "Due today" : "\(goal.daysRemaining) days left")
-                            .font(.caption).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .firstTextBaseline) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(goal.metricName).font(.headline)
+                            Text("\(OverviewMetric.format(value: entry.current, isCurrency: goal.isCurrency, unit: goal.unit)) of \(goal.formattedTarget)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                        Text(progress, format: .percent.precision(.fractionLength(0)))
+                            .font(.title2.bold())
+                            .monospacedDigit()
+                            .foregroundStyle(tint)
                     }
-                    Spacer(minLength: 0)
+                    LabeledProgressBar(
+                        progress: progress,
+                        startText: OverviewMetric.format(value: goal.startValue, isCurrency: goal.isCurrency, unit: goal.unit),
+                        goalText: goal.formattedTarget,
+                        tint: tint,
+                        barHeight: 10
+                    )
+                    HStack(spacing: 6) {
+                        if let pace {
+                            Label(pace.label, systemImage: pace.systemImage)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(tint)
+                        }
+                        Spacer(minLength: 0)
+                        Text(goal.daysRemaining == 0 ? "Due today" : "\(goal.daysRemaining) days left")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             } else {
                 emptyState
@@ -154,7 +175,7 @@ struct GoalWidgetView: View {
     private var inline: some View {
         Group {
             if let goal = entry.goal {
-                Text("\(goal.metricName) \(Int((progress * 100).rounded()))% · \(goal.daysRemaining)d")
+                Text("\(goal.metricName) \(Int((progress * 100).rounded()))% of \(goal.formattedTarget)")
             } else {
                 Text("Set a goal in AppGoals")
             }
@@ -166,15 +187,31 @@ struct GoalWidgetView: View {
         Group {
             if let goal = entry.goal {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(goal.metricName).font(.headline)
-                    Gauge(value: progress) {
-                        EmptyView()
-                    } currentValueLabel: {
-                        Text(progress, format: .percent.precision(.fractionLength(0)))
+                    HStack(spacing: 4) {
+                        Text(goal.metricName).font(.headline)
+                        Spacer(minLength: 0)
+                        if let pace {
+                            Label("\(goal.daysRemaining)d", systemImage: pace.systemImage)
+                                .font(.caption2)
+                                .labelStyle(.titleAndIcon)
+                                .lineLimit(1)
+                        } else {
+                            Text("\(goal.daysRemaining)d").font(.caption2)
+                        }
                     }
-                    .gaugeStyle(.accessoryLinearCapacity)
-                    Text("\(goal.daysRemaining)d left · \(OverviewMetric.format(value: entry.current, isCurrency: goal.isCurrency, unit: goal.unit))")
-                        .font(.caption2).foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
+                        Gauge(value: progress) { EmptyView() }
+                            .gaugeStyle(.accessoryLinearCapacity)
+                        Text(progress, format: .percent.precision(.fractionLength(0)))
+                            .font(.caption.weight(.semibold))
+                    }
+                    HStack(spacing: 4) {
+                        Text(OverviewMetric.format(value: goal.startValue, isCurrency: goal.isCurrency, unit: goal.unit))
+                        Spacer(minLength: 0)
+                        Text(goal.formattedTarget)
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
                 }
             } else {
                 Text("Set a goal in AppGoals")

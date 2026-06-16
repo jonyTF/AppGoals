@@ -10,11 +10,15 @@ import SwiftUI
 
 struct SetupView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
 
     @State private var apiKey = ""
     @State private var projectID = ""
     @State private var isWorking = false
     @State private var error: String?
+
+    private let projectsURL = URL(string: "https://app.revenuecat.com/projects")!
 
     private var canSubmit: Bool {
         !apiKey.trimmingCharacters(in: .whitespaces).isEmpty &&
@@ -69,16 +73,32 @@ struct SetupView: View {
                 }
 
                 Section("How to get these") {
-                    Link(destination: URL(string: "https://app.revenuecat.com/settings/api-keys")!) {
-                        Label("Open RevenueCat API keys", systemImage: "key.fill")
+                    Button {
+                        openURL(projectsURL)
+                    } label: {
+                        Label("Open RevenueCat projects", systemImage: "safari")
                     }
-                    Text("Create a **v2 secret key** with the `charts_metrics:overview:read` permission only. Find the **Project ID** in RevenueCat → Project settings.")
+                    Text("Opens RevenueCat in your browser. Pick your project — the code in its URL (`/projects/`**`<id>`**`/…`) is your **Project ID** — then open **API keys** and create a **v2 secret key** with the `charts_metrics:overview:read` permission only.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("AppGoals")
+            .dismissKeyboardSupport()
+            .onAppear(perform: consumePendingProjectID)
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { consumePendingProjectID() }
+            }
         }
+    }
+
+    /// Picks up a project ID shared into the app via the Share Extension.
+    private func consumePendingProjectID() {
+        let defaults = AppGroupConfig.defaults
+        guard let pending = defaults.string(forKey: AppGroupConfig.DefaultsKey.pendingProjectID),
+              !pending.isEmpty else { return }
+        projectID = pending
+        defaults.removeObject(forKey: AppGroupConfig.DefaultsKey.pendingProjectID)
     }
 
     private func submit() async {

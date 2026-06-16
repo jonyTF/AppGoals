@@ -55,6 +55,25 @@ struct Goal: Codable, Identifiable, Hashable {
             case .complete: return "Goal reached 🎉"
             }
         }
+
+        /// Compact label for space-constrained surfaces like lock-screen widgets.
+        var shortLabel: String {
+            switch self {
+            case .ahead: return "Ahead"
+            case .onTrack: return "On track"
+            case .behind: return "Behind"
+            case .complete: return "Done"
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .complete: return "checkmark.seal.fill"
+            case .ahead: return "arrow.up.right.circle.fill"
+            case .onTrack: return "equal.circle.fill"
+            case .behind: return "arrow.down.right.circle.fill"
+            }
+        }
     }
 
     func paceStatus(current: Double, asOf now: Date) -> PaceStatus {

@@ -1,0 +1,18 @@
+# Xcode user-specific files
+*.xcuserstate
+xcuserdata/
+*.xcuserdatad/
+
+# Xcode per-user scheme management
+**/xcshareddata/WorkspaceSettings.xcsettings
+
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods / Carthage (if added later)
+Pods/
+Carthage/Build/

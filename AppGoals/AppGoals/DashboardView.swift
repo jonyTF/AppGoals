@@ -130,19 +130,21 @@ struct GoalCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(goal.metricName)
-                        .font(.headline)
-                    Text("\(OverviewMetric.format(value: current, isCurrency: goal.isCurrency, unit: goal.unit)) of \(goal.formattedTarget)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(goal.metricName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(OverviewMetric.format(value: current, isCurrency: goal.isCurrency, unit: goal.unit))
+                        .font(.largeTitle.bold())
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Text(progress, format: .percent.precision(.fractionLength(0)))
+                        .font(.title3.bold())
+                        .monospacedDigit()
+                        .foregroundStyle(tint)
                 }
-                Spacer(minLength: 0)
-                Text(progress, format: .percent.precision(.fractionLength(0)))
-                    .font(.title2.bold())
-                    .monospacedDigit()
-                    .foregroundStyle(tint)
             }
 
             LabeledProgressBar(
@@ -158,7 +160,7 @@ struct GoalCard: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(tint)
                 Spacer(minLength: 0)
-                Text(goal.daysRemaining == 0 ? "Due today" : "\(goal.daysRemaining) days left")
+                Text(goal.daysRemaining == 0 ? "Due today" : "\(goal.daysRemaining)d left")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

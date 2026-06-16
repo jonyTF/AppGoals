@@ -47,7 +47,10 @@ struct Provider: TimelineProvider {
         let projectID = AppGroupConfig.defaults.string(forKey: AppGroupConfig.DefaultsKey.projectID) ?? cached?.projectID ?? ""
         guard !projectID.isEmpty else { return cached }
         do {
-            let metrics = try await RevenueCatClient().fetchOverview(projectID: projectID, key: key)
+            let metrics = try await RevenueCatClient().fetchAllMetrics(
+                projectID: projectID, key: key,
+                useRealtimeRevenue: AppGroupConfig.useRealtimeRevenue
+            )
             let snap = MetricsSnapshot(metrics: metrics, fetchedAt: Date(), projectID: projectID)
             SnapshotStore.save(snap)
             return snap
@@ -95,19 +98,30 @@ struct GoalWidgetView: View {
     private var small: some View {
         Group {
             if let goal = entry.goal {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label(goal.metricName, systemImage: MetricID(rawValue: goal.metricID)?.systemImage ?? "target")
-                        .font(.caption2.weight(.semibold))
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(goal.metricName)
+                        .font(.caption).fontWeight(.semibold)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                    Text(OverviewMetric.format(value: entry.current, isCurrency: goal.isCurrency, unit: goal.unit))
+                        .font(.title2.bold())
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
                     Spacer(minLength: 0)
-                    ProgressRing(progress: progress, lineWidth: 10, tint: tint)
-                        .frame(width: 64, height: 64)
-                        .frame(maxWidth: .infinity)
-                    Spacer(minLength: 0)
-                    Text("\(goal.daysRemaining)d left")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(tint.opacity(0.25))
+                            Capsule().fill(tint).frame(width: max(6, geo.size.width * min(1, max(0, progress))))
+                        }
+                    }
+                    .frame(height: 6)
+                    HStack {
+                        Text(progress, format: .percent.precision(.fractionLength(0)))
+                        Spacer(minLength: 0)
+                        Text("\(goal.daysRemaining)d")
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
                 }
             } else {
                 emptyState
@@ -120,19 +134,22 @@ struct GoalWidgetView: View {
     private var medium: some View {
         Group {
             if let goal = entry.goal {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .firstTextBaseline) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(goal.metricName).font(.headline)
-                            Text("\(OverviewMetric.format(value: entry.current, isCurrency: goal.isCurrency, unit: goal.unit)) of \(goal.formattedTarget)")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(goal.metricName)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(OverviewMetric.format(value: entry.current, isCurrency: goal.isCurrency, unit: goal.unit))
+                                .font(.title.bold())
+                                .minimumScaleFactor(0.6)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                            Text(progress, format: .percent.precision(.fractionLength(0)))
+                                .font(.headline)
+                                .monospacedDigit()
+                                .foregroundStyle(tint)
                         }
-                        Spacer(minLength: 0)
-                        Text(progress, format: .percent.precision(.fractionLength(0)))
-                            .font(.title2.bold())
-                            .monospacedDigit()
-                            .foregroundStyle(tint)
                     }
                     LabeledProgressBar(
                         progress: progress,
@@ -148,7 +165,7 @@ struct GoalWidgetView: View {
                                 .foregroundStyle(tint)
                         }
                         Spacer(minLength: 0)
-                        Text(goal.daysRemaining == 0 ? "Due today" : "\(goal.daysRemaining) days left")
+                        Text(goal.daysRemaining == 0 ? "Due today" : "\(goal.daysRemaining)d left")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -175,7 +192,7 @@ struct GoalWidgetView: View {
     private var inline: some View {
         Group {
             if let goal = entry.goal {
-                Text("\(goal.metricName) \(Int((progress * 100).rounded()))% of \(goal.formattedTarget)")
+                Text("\(OverviewMetric.format(value: entry.current, isCurrency: goal.isCurrency, unit: goal.unit)) · \(Int((progress * 100).rounded()))%")
             } else {
                 Text("Set a goal in AppGoals")
             }
@@ -188,7 +205,10 @@ struct GoalWidgetView: View {
             if let goal = entry.goal {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 4) {
-                        Text(goal.metricName).font(.headline)
+                        Text(OverviewMetric.format(value: entry.current, isCurrency: goal.isCurrency, unit: goal.unit))
+                            .font(.headline).fontWeight(.bold)
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
                         Spacer(minLength: 0)
                         if let pace {
                             Label("\(goal.daysRemaining)d", systemImage: pace.systemImage)

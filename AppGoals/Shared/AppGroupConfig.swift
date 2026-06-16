@@ -33,5 +33,15 @@ enum AppGroupConfig {
         static let projectID = "revenuecat.projectID"
         /// A project ID shared in from the Share Extension, awaiting pickup by the app.
         static let pendingProjectID = "revenuecat.pendingProjectID"
+        /// When true, fetch the 28-day revenue from the real-time /metrics/revenue
+        /// endpoint instead of using the overview metric.
+        static let realtimeRevenue = "revenue.realtime"
+    }
+
+    /// Whether to source 28-day revenue from the real-time endpoint. Read by both
+    /// the app and the widget so they stay consistent.
+    static var useRealtimeRevenue: Bool {
+        get { defaults.bool(forKey: DefaultsKey.realtimeRevenue) }
+        set { defaults.set(newValue, forKey: DefaultsKey.realtimeRevenue) }
     }
 }

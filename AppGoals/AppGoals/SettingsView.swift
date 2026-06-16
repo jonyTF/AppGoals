@@ -21,6 +21,17 @@ struct SettingsView: View {
                     LabeledContent("API key", value: "•••• stored in Keychain")
                 }
 
+                Section {
+                    Toggle("Real-time revenue", isOn: Binding(
+                        get: { model.useRealtimeRevenue },
+                        set: { model.setRealtimeRevenue($0) }
+                    ))
+                } header: {
+                    Text("Revenue source")
+                } footer: {
+                    Text("On: fetch the 28-day revenue from RevenueCat's real-time metrics endpoint (fresher, one extra request). Off: use the value from the overview metrics.")
+                }
+
                 if let goal = model.goal {
                     Section("Goal") {
                         LabeledContent("Tracking", value: goal.metricName)

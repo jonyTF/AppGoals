@@ -17,6 +17,9 @@ final class AppModel {
     var snapshot: MetricsSnapshot?
     var goal: Goal?
 
+    /// Source for the 28-day revenue metric: real-time endpoint vs overview.
+    var useRealtimeRevenue: Bool
+
     var isRefreshing = false
     var lastError: String?
 
@@ -26,6 +29,12 @@ final class AppModel {
         projectID = AppGroupConfig.defaults.string(forKey: AppGroupConfig.DefaultsKey.projectID) ?? ""
         snapshot = SnapshotStore.load()
         goal = GoalStore.load()
+
+        // Default the real-time revenue source on for first launch.
+        if AppGroupConfig.defaults.object(forKey: AppGroupConfig.DefaultsKey.realtimeRevenue) == nil {
+            AppGroupConfig.useRealtimeRevenue = true
+        }
+        useRealtimeRevenue = AppGroupConfig.useRealtimeRevenue
 
         #if DEBUG
         if CommandLine.arguments.contains("-seedSampleData") {
@@ -73,7 +82,7 @@ final class AppModel {
         defer { isRefreshing = false }
 
         do {
-            let metrics = try await client.fetchOverview(projectID: project, key: key)
+            let metrics = try await client.fetchAllMetrics(projectID: project, key: key, useRealtimeRevenue: useRealtimeRevenue)
             KeychainStore.saveAPIKey(key)
             self.projectID = project
             AppGroupConfig.defaults.set(project, forKey: AppGroupConfig.DefaultsKey.projectID)
@@ -98,12 +107,19 @@ final class AppModel {
         defer { isRefreshing = false }
 
         do {
-            let metrics = try await client.fetchOverview(projectID: projectID, key: key)
+            let metrics = try await client.fetchAllMetrics(projectID: projectID, key: key, useRealtimeRevenue: useRealtimeRevenue)
             persist(metrics: metrics, projectID: projectID)
             reloadWidgets()
         } catch {
             lastError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
+    }
+
+    /// Switches the revenue source and re-fetches.
+    func setRealtimeRevenue(_ enabled: Bool) {
+        useRealtimeRevenue = enabled
+        AppGroupConfig.useRealtimeRevenue = enabled
+        Task { await refresh() }
     }
 
     // MARK: Goal

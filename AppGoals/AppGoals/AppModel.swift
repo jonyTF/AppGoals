@@ -20,6 +20,10 @@ final class AppModel {
     /// Source for the 28-day revenue metric: real-time endpoint vs overview.
     var useRealtimeRevenue: Bool
 
+    /// Whether today's new-subscriptions count includes resubscriptions on top of
+    /// new direct subscriptions.
+    var includeResubscriptions: Bool
+
     var isRefreshing = false
     var lastError: String?
 
@@ -35,6 +39,7 @@ final class AppModel {
             AppGroupConfig.useRealtimeRevenue = true
         }
         useRealtimeRevenue = AppGroupConfig.useRealtimeRevenue
+        includeResubscriptions = AppGroupConfig.includeResubscriptions
 
         #if DEBUG
         if CommandLine.arguments.contains("-seedSampleData") {
@@ -82,7 +87,9 @@ final class AppModel {
         defer { isRefreshing = false }
 
         do {
-            let metrics = try await client.fetchAllMetrics(projectID: project, key: key, useRealtimeRevenue: useRealtimeRevenue)
+            let metrics = try await client.fetchAllMetrics(projectID: project, key: key,
+                                                           useRealtimeRevenue: useRealtimeRevenue,
+                                                           includeResubscriptions: includeResubscriptions)
             KeychainStore.saveAPIKey(key)
             self.projectID = project
             AppGroupConfig.defaults.set(project, forKey: AppGroupConfig.DefaultsKey.projectID)
@@ -107,7 +114,9 @@ final class AppModel {
         defer { isRefreshing = false }
 
         do {
-            let metrics = try await client.fetchAllMetrics(projectID: projectID, key: key, useRealtimeRevenue: useRealtimeRevenue)
+            let metrics = try await client.fetchAllMetrics(projectID: projectID, key: key,
+                                                           useRealtimeRevenue: useRealtimeRevenue,
+                                                           includeResubscriptions: includeResubscriptions)
             persist(metrics: metrics, projectID: projectID)
             reloadWidgets()
         } catch {
@@ -119,6 +128,14 @@ final class AppModel {
     func setRealtimeRevenue(_ enabled: Bool) {
         useRealtimeRevenue = enabled
         AppGroupConfig.useRealtimeRevenue = enabled
+        Task { await refresh() }
+    }
+
+    /// Toggles whether resubscriptions count toward today's new subscriptions and
+    /// re-fetches so the metric reflects the new definition.
+    func setIncludeResubscriptions(_ enabled: Bool) {
+        includeResubscriptions = enabled
+        AppGroupConfig.includeResubscriptions = enabled
         Task { await refresh() }
     }
 

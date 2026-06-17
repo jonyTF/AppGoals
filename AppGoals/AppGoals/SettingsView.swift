@@ -32,6 +32,17 @@ struct SettingsView: View {
                     Text("On: fetch the 28-day revenue from RevenueCat's real-time metrics endpoint (fresher, one extra request). Off: use the value from the overview metrics.")
                 }
 
+                Section {
+                    Toggle("Include resubscriptions", isOn: Binding(
+                        get: { model.includeResubscriptions },
+                        set: { model.setIncludeResubscriptions($0) }
+                    ))
+                } header: {
+                    Text("New subscriptions today")
+                } footer: {
+                    Text("Off: count only new direct subscriptions (no trial or intro offer). On: also include resubscriptions from customers who previously churned.")
+                }
+
                 if let goal = model.goal {
                     Section("Goal") {
                         LabeledContent("Tracking", value: goal.metricName)

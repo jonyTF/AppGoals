@@ -16,6 +16,7 @@ enum SampleData {
         OverviewMetric(id: "active_trials", name: "Active Trials", unit: "", value: 96),
         OverviewMetric(id: "new_customers", name: "New Customers", unit: "", period: "P28D", value: 213),
         OverviewMetric(id: "active_users", name: "Active Users", unit: "", period: "P28D", value: 5_640),
+        OverviewMetric(id: "new_paid_subscriptions", name: "New Subs Today", unit: "", period: "P1D", value: 9),
     ]
 
     static var snapshot: MetricsSnapshot {

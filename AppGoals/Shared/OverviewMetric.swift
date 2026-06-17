@@ -17,6 +17,7 @@ enum MetricID: String, Codable, CaseIterable, Hashable {
     case activeTrials = "active_trials"
     case newCustomers = "new_customers"
     case activeUsers = "active_users"
+    case newPaidSubscriptions = "new_paid_subscriptions"
 
     var fallbackName: String {
         switch self {
@@ -26,6 +27,7 @@ enum MetricID: String, Codable, CaseIterable, Hashable {
         case .activeTrials: return "Active Trials"
         case .newCustomers: return "New Customers"
         case .activeUsers: return "Active Users"
+        case .newPaidSubscriptions: return "New Subs Today"
         }
     }
 
@@ -37,6 +39,7 @@ enum MetricID: String, Codable, CaseIterable, Hashable {
         case .activeTrials: return "hourglass"
         case .newCustomers: return "person.badge.plus"
         case .activeUsers: return "person.3.fill"
+        case .newPaidSubscriptions: return "cart.badge.plus"
         }
     }
 

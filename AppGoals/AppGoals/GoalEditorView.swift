@@ -15,6 +15,7 @@ struct GoalEditorView: View {
     @State private var selectedMetricID: String
     @State private var startText: String
     @State private var targetText: String
+    @State private var startDate: Date
     @State private var targetDate: Date
 
     private let existing: Goal?
@@ -26,6 +27,7 @@ struct GoalEditorView: View {
         _selectedMetricID = State(initialValue: initialID)
         _startText = State(initialValue: Self.plainNumber(existing?.startValue ?? currentValue ?? 0))
         _targetText = State(initialValue: existing.map { Self.plainNumber($0.targetValue) } ?? "")
+        _startDate = State(initialValue: existing?.startDate ?? Date())
         _targetDate = State(initialValue: existing?.targetDate ?? Date(timeIntervalSinceNow: 90 * 86_400))
     }
 
@@ -36,7 +38,7 @@ struct GoalEditorView: View {
 
     private var canSave: Bool {
         guard selectedMetric != nil, let target = targetValue, let start = startValue else { return false }
-        return target > 0 && target != start && targetDate > Date()
+        return target > 0 && target != start && targetDate > startDate
     }
 
     var body: some View {
@@ -72,10 +74,11 @@ struct GoalEditorView: View {
                         }
                         .font(.footnote)
                     }
+                    DatePicker("Started", selection: $startDate, displayedComponents: .date)
                 } header: {
                     Text("Starting point")
                 } footer: {
-                    Text("Progress is measured from this value up to your target. Adjust it to set your own baseline.")
+                    Text("Progress is measured from this value up to your target, and pacing runs from the start date to the deadline. Adjust them to set your own baseline.")
                 }
 
                 Section("Target") {
@@ -129,7 +132,7 @@ struct GoalEditorView: View {
             unit: metric.unit,
             targetValue: target,
             startValue: startValue ?? existing?.startValue ?? metric.value,
-            startDate: existing?.startDate ?? Date(),
+            startDate: startDate,
             targetDate: targetDate
         )
     }

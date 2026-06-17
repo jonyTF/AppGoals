@@ -71,8 +71,12 @@ struct DashboardView: View {
     @ViewBuilder
     private var goalSection: some View {
         if let goal = model.goal {
-            GoalCard(goal: goal, current: model.metric(for: goal.metricID)?.value ?? goal.startValue)
-                .onTapGesture { showingGoalEditor = true }
+            GoalCard(
+                goal: goal,
+                current: model.metric(for: goal.metricID)?.value ?? goal.startValue,
+                newSubsToday: goal.isRevenueGoal ? model.metric(for: MetricID.newPaidSubscriptions.rawValue)?.value : nil
+            )
+            .onTapGesture { showingGoalEditor = true }
         } else {
             Button { showingGoalEditor = true } label: {
                 VStack(spacing: 8) {
@@ -116,9 +120,17 @@ struct DashboardView: View {
 struct GoalCard: View {
     let goal: Goal
     let current: Double
+    var newSubsToday: Double? = nil
 
     private var progress: Double { goal.progressFraction(current: current) }
     private var pace: Goal.PaceStatus { goal.paceStatus(current: current, asOf: Date()) }
+
+    /// "+X/day" still needed to reach the target by the deadline.
+    private var formattedDailyRate: String {
+        let rate = goal.requiredDailyRate(current: current, asOf: Date())
+        let value = goal.isCurrency ? rate : rate.rounded(.up)
+        return "+" + OverviewMetric.format(value: value, isCurrency: goal.isCurrency, unit: goal.unit)
+    }
 
     private var tint: Color {
         switch pace {
@@ -131,9 +143,20 @@ struct GoalCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(goal.metricName)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                HStack(alignment: .top) {
+                    Text(goal.metricName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                    if let newSubsToday {
+                        Label("\(Int(newSubsToday)) new today", systemImage: MetricID.newPaidSubscriptions.systemImage)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(.background.opacity(0.6), in: .capsule)
+                    }
+                }
                 HStack(alignment: .firstTextBaseline) {
                     Text(OverviewMetric.format(value: current, isCurrency: goal.isCurrency, unit: goal.unit))
                         .font(.largeTitle.bold())
@@ -161,6 +184,12 @@ struct GoalCard: View {
                     .foregroundStyle(tint)
                 Spacer(minLength: 0)
                 Text(goal.daysRemaining == 0 ? "Due today" : "\(goal.daysRemaining)d left")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if pace != .complete {
+                Label("Need \(formattedDailyRate)/day to stay on track", systemImage: "speedometer")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

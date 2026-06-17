@@ -98,6 +98,23 @@ struct Goal: Codable, Identifiable, Hashable {
         max(0, targetValue - current)
     }
 
+    /// The per-day increase still needed, from now until the deadline, to reach
+    /// the target. Returns 0 once the goal is complete. Uses whole days remaining
+    /// (matching the countdown shown elsewhere), with a floor of one day so the
+    /// final day reports the full remaining amount rather than dividing by zero.
+    func requiredDailyRate(current: Double, asOf now: Date) -> Double {
+        if isComplete(current: current) { return 0 }
+        let secondsLeft = targetDate.timeIntervalSince(now)
+        let days = max(ceil(secondsLeft / 86_400), 1)
+        return remaining(current: current) / days
+    }
+
+    /// Whether this goal tracks a revenue metric (MRR or revenue), for which it's
+    /// useful to also surface today's new subscriptions.
+    var isRevenueGoal: Bool {
+        metricID == MetricID.mrr.rawValue || metricID == MetricID.revenue.rawValue
+    }
+
     var formattedTarget: String {
         OverviewMetric.format(value: targetValue, isCurrency: isCurrency, unit: unit)
     }

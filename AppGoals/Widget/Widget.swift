@@ -15,13 +15,16 @@ struct GoalEntry: TimelineEntry {
     let goal: Goal?
     let current: Double
     let hasCredentials: Bool
+    /// Today's new subscriptions, shown on home-screen widgets when the goal
+    /// tracks a revenue metric. `nil` otherwise (and never shown on lock screen).
+    var newSubsToday: Double? = nil
 }
 
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> GoalEntry {
         GoalEntry(date: Date(), goal: SampleData.goal,
                   current: SampleData.metrics.first { $0.id == "mrr" }?.value ?? 0,
-                  hasCredentials: true)
+                  hasCredentials: true, newSubsToday: 9)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (GoalEntry) -> Void) {
@@ -49,7 +52,8 @@ struct Provider: TimelineProvider {
         do {
             let metrics = try await RevenueCatClient().fetchAllMetrics(
                 projectID: projectID, key: key,
-                useRealtimeRevenue: AppGroupConfig.useRealtimeRevenue
+                useRealtimeRevenue: AppGroupConfig.useRealtimeRevenue,
+                includeResubscriptions: AppGroupConfig.includeResubscriptions
             )
             let snap = MetricsSnapshot(metrics: metrics, fetchedAt: Date(), projectID: projectID)
             SnapshotStore.save(snap)
@@ -63,7 +67,11 @@ struct Provider: TimelineProvider {
         let goal = GoalStore.load()
         let hasCredentials = KeychainStore.loadAPIKey() != nil
         let current = goal.flatMap { g in snapshot?.metric(withID: g.metricID)?.value } ?? goal?.startValue ?? 0
-        return GoalEntry(date: Date(), goal: goal, current: current, hasCredentials: hasCredentials)
+        let newSubsToday: Double? = (goal?.isRevenueGoal == true)
+            ? snapshot?.metric(withID: MetricID.newPaidSubscriptions.rawValue)?.value
+            : nil
+        return GoalEntry(date: Date(), goal: goal, current: current,
+                         hasCredentials: hasCredentials, newSubsToday: newSubsToday)
     }
 }
 
@@ -99,10 +107,19 @@ struct GoalWidgetView: View {
         Group {
             if let goal = entry.goal {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(goal.metricName)
-                        .font(.caption).fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    HStack(spacing: 4) {
+                        Text(goal.metricName)
+                            .font(.caption).fontWeight(.semibold)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        if let n = entry.newSubsToday {
+                            Text("+\(Int(n)) new")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
                     Text(OverviewMetric.format(value: entry.current, isCurrency: goal.isCurrency, unit: goal.unit))
                         .font(.title2.bold())
                         .minimumScaleFactor(0.5)
@@ -136,9 +153,20 @@ struct GoalWidgetView: View {
             if let goal = entry.goal {
                 VStack(alignment: .leading, spacing: 10) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(goal.metricName)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                        HStack(alignment: .top) {
+                            Text(goal.metricName)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Spacer(minLength: 0)
+                            if let n = entry.newSubsToday {
+                                Label("\(Int(n)) new today", systemImage: MetricID.newPaidSubscriptions.systemImage)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(.background.opacity(0.6), in: .capsule)
+                            }
+                        }
                         HStack(alignment: .firstTextBaseline) {
                             Text(OverviewMetric.format(value: entry.current, isCurrency: goal.isCurrency, unit: goal.unit))
                                 .font(.title.bold())
@@ -274,5 +302,5 @@ struct GoalProgressWidget: Widget {
 } timeline: {
     GoalEntry(date: .now, goal: SampleData.goal,
               current: SampleData.metrics.first { $0.id == "mrr" }!.value,
-              hasCredentials: true)
+              hasCredentials: true, newSubsToday: 9)
 }

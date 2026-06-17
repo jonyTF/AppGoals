@@ -44,8 +44,24 @@ struct RevenueCatClient {
     /// `revenue` metric is replaced with a fresher value from the dedicated
     /// /metrics/revenue endpoint. Overview is required; if the realtime revenue
     /// call fails, the overview's revenue is kept.
-    func fetchAllMetrics(projectID: String, key: String, useRealtimeRevenue: Bool) async throws -> [OverviewMetric] {
+    func fetchAllMetrics(projectID: String, key: String,
+                         useRealtimeRevenue: Bool,
+                         includeResubscriptions: Bool) async throws -> [OverviewMetric] {
         var metrics = try await fetchOverview(projectID: projectID, key: key)
+
+        // Today's new paid subscriptions come from the charts endpoint, which the
+        // overview doesn't cover. Best-effort: if the key lacks the
+        // `charts_metrics:charts:read` permission (or the call otherwise fails),
+        // the rest of the dashboard still loads without it.
+        if let newSubs = try? await fetchNewPaidSubscriptions(projectID: projectID, key: key,
+                                                              includeResubscriptions: includeResubscriptions) {
+            if let idx = metrics.firstIndex(where: { $0.id == newSubs.id }) {
+                metrics[idx] = newSubs
+            } else {
+                metrics.append(newSubs)
+            }
+        }
+
         guard useRealtimeRevenue else { return metrics }
 
         let end = Date()
@@ -118,6 +134,56 @@ struct RevenueCatClient {
         }
     }
 
+    // MARK: New paid subscriptions (charts)
+
+    /// Measures of the `actives_new` chart that make up the value we surface.
+    /// "Direct Subscriptions" are brand-new paid subscribers with no trial/intro
+    /// offer; "Resubscriptions" are customers who churned and came back.
+    private static let directSubsMeasure = "Direct Subscriptions"
+    private static let resubsMeasure = "Resubscriptions"
+
+    /// GET /projects/{id}/charts/actives_new?resolution=day&start_date=&end_date=
+    /// Returns the count of new paid subscriptions for `day` (defaults to today,
+    /// in UTC to match RevenueCat's chart buckets). Counts new direct subscriptions,
+    /// optionally adding resubscriptions. Requires the API key to carry the
+    /// `charts_metrics:charts:read` permission.
+    func fetchNewPaidSubscriptions(projectID: String, key: String,
+                                   day: Date = Date(),
+                                   includeResubscriptions: Bool) async throws -> OverviewMetric {
+        let (project, secret) = try credentials(projectID, key)
+        let dayString = Self.dateFormatter.string(from: day)
+        var components = URLComponents(
+            url: baseURL
+                .appendingPathComponent("projects").appendingPathComponent(project)
+                .appendingPathComponent("charts").appendingPathComponent("actives_new"),
+            resolvingAgainstBaseURL: false
+        )!
+        components.queryItems = [
+            URLQueryItem(name: "resolution", value: "day"),
+            URLQueryItem(name: "start_date", value: dayString),
+            URLQueryItem(name: "end_date", value: dayString),
+        ]
+
+        let data = try await send(url: components.url!, key: secret)
+        do {
+            let chart = try JSONDecoder().decode(ChartDataResponse.self, from: data)
+            let direct = chart.total(measureNamed: Self.directSubsMeasure) ?? 0
+            let resubs = includeResubscriptions ? (chart.total(measureNamed: Self.resubsMeasure) ?? 0) : 0
+            return OverviewMetric(
+                id: MetricID.newPaidSubscriptions.rawValue,
+                name: "New Subs Today",
+                description: includeResubscriptions
+                    ? "New direct subscriptions + resubscriptions today"
+                    : "New direct subscriptions today",
+                unit: "",
+                period: "P1D",
+                value: direct + resubs
+            )
+        } catch {
+            throw RevenueCatError.decoding
+        }
+    }
+
     // MARK: Shared request handling
 
     private func credentials(_ projectID: String, _ key: String) throws -> (String, String) {
@@ -168,6 +234,35 @@ struct RevenueCatClient {
         case "JPY", "CNY": return "¥"
         case .some(let other): return other + " "
         }
+    }
+}
+
+/// Subset of the charts endpoint response we need. `measures` describes each
+/// series in order; `values` carries one entry per (cohort, measure) pair, and
+/// `summary.total` sums each measure across the requested range.
+private struct ChartDataResponse: Decodable {
+    struct Measure: Decodable {
+        let displayName: String
+        enum CodingKeys: String, CodingKey { case displayName = "display_name" }
+    }
+    struct Value: Decodable {
+        let measure: Int
+        let value: Double
+    }
+    struct Summary: Decodable {
+        let total: [String: Double]
+    }
+
+    let measures: [Measure]
+    let values: [Value]
+    let summary: Summary?
+
+    /// Total for a measure over the requested range. Prefers the server-computed
+    /// `summary.total`; falls back to summing the matching `values` entries.
+    func total(measureNamed name: String) -> Double? {
+        if let total = summary?.total[name] { return total }
+        guard let idx = measures.firstIndex(where: { $0.displayName == name }) else { return nil }
+        return values.filter { $0.measure == idx }.reduce(0) { $0 + $1.value }
     }
 }
 

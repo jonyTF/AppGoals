@@ -17,9 +17,8 @@ enum AppGroupConfig {
         UserDefaults(suiteName: appGroupID) ?? .standard
     }
 
-    // Keychain identifiers for the RevenueCat secret key.
+    // Shared Keychain service; each provider uses its own account.
     static let keychainService = "dev.jonathanliu.AppGoals"
-    static let keychainAccount = "revenuecat-api-key"
 
     /// Shared keychain access group so the widget can also read the key.
     /// Must match the `keychain-access-groups` entitlement
@@ -31,6 +30,7 @@ enum AppGroupConfig {
     enum DefaultsKey {
         static let snapshot = "metrics.snapshot"
         static let goal = "active.goal"
+        static let connection = "metrics.connection"
         static let projectID = "revenuecat.projectID"
         /// When true, fetch the 28-day revenue from the real-time /metrics/revenue
         /// endpoint instead of using the overview metric.

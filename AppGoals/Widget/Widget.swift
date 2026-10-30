@@ -198,8 +198,8 @@ struct GoalWidgetView: View {
                             .foregroundStyle(.secondary)
                     }
                     if pace != .complete {
-                        Label("Need \(goal.formattedRequiredDailyRate(current: entry.current, asOf: entry.date))/day to stay on track",
-                              systemImage: "speedometer")
+                        Label("Need to hit \(goal.formattedOnTrackValue(asOf: entry.date)) to stay on track",
+                              systemImage: "flag.checkered")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)

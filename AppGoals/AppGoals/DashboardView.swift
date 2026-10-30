@@ -182,6 +182,9 @@ struct GoalCard: View {
             }
 
             if pace != .complete {
+                Label("Need to hit \(goal.formattedOnTrackValue(asOf: Date())) to stay on track", systemImage: "flag.checkered")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
                 Label("Need \(goal.formattedRequiredDailyRate(current: current, asOf: Date()))/day to stay on track", systemImage: "speedometer")
                     .font(.caption)
                     .foregroundStyle(.secondary)

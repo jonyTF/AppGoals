@@ -44,6 +44,15 @@ struct Goal: Codable, Identifiable, Hashable {
         return startValue + (targetValue - startValue) * elapsed
     }
 
+    /// The value the metric needs to be at right now to stay on track, formatted
+    /// for display. Count-based metrics round toward the target so the number
+    /// shown is always a whole value that actually keeps you on pace.
+    func formattedOnTrackValue(asOf now: Date) -> String {
+        let expected = expectedValueNow(asOf: now)
+        let value = isCurrency ? expected : expected.rounded(targetValue >= startValue ? .up : .down)
+        return OverviewMetric.format(value: value, isCurrency: isCurrency, unit: unit)
+    }
+
     enum PaceStatus: String {
         case ahead, onTrack, behind, complete
 

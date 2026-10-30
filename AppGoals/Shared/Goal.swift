@@ -109,6 +109,14 @@ struct Goal: Codable, Identifiable, Hashable {
         return remaining(current: current) / days
     }
 
+    /// "+X" per-day increase still needed, formatted for display. Count-based
+    /// metrics round up so the requirement is always a whole number.
+    func formattedRequiredDailyRate(current: Double, asOf now: Date) -> String {
+        let rate = requiredDailyRate(current: current, asOf: now)
+        let value = isCurrency ? rate : rate.rounded(.up)
+        return "+" + OverviewMetric.format(value: value, isCurrency: isCurrency, unit: unit)
+    }
+
     /// Whether this goal tracks a revenue metric (MRR or revenue), for which it's
     /// useful to also surface today's new subscriptions.
     var isRevenueGoal: Bool {

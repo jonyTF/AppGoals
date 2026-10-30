@@ -125,13 +125,6 @@ struct GoalCard: View {
     private var progress: Double { goal.progressFraction(current: current) }
     private var pace: Goal.PaceStatus { goal.paceStatus(current: current, asOf: Date()) }
 
-    /// "+X/day" still needed to reach the target by the deadline.
-    private var formattedDailyRate: String {
-        let rate = goal.requiredDailyRate(current: current, asOf: Date())
-        let value = goal.isCurrency ? rate : rate.rounded(.up)
-        return "+" + OverviewMetric.format(value: value, isCurrency: goal.isCurrency, unit: goal.unit)
-    }
-
     private var tint: Color {
         switch pace {
         case .complete, .ahead: return .green
@@ -189,7 +182,7 @@ struct GoalCard: View {
             }
 
             if pace != .complete {
-                Label("Need \(formattedDailyRate)/day to stay on track", systemImage: "speedometer")
+                Label("Need \(goal.formattedRequiredDailyRate(current: current, asOf: Date()))/day to stay on track", systemImage: "speedometer")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

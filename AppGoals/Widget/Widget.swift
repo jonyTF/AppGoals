@@ -151,7 +151,7 @@ struct GoalWidgetView: View {
     private var medium: some View {
         Group {
             if let goal = entry.goal {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(alignment: .top) {
                             Text(goal.metricName)
@@ -196,6 +196,14 @@ struct GoalWidgetView: View {
                         Text(goal.daysRemaining == 0 ? "Due today" : "\(goal.daysRemaining)d left")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                    }
+                    if pace != .complete {
+                        Label("Need \(goal.formattedRequiredDailyRate(current: entry.current, asOf: entry.date))/day to stay on track",
+                              systemImage: "speedometer")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                 }
             } else {

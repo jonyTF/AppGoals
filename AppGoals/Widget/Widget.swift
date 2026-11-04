@@ -151,7 +151,7 @@ struct GoalWidgetView: View {
     private var medium: some View {
         Group {
             if let goal = entry.goal {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(alignment: .top) {
                             Text(goal.metricName)

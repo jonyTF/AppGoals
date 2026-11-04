@@ -2,7 +2,7 @@
 //  KeychainStore.swift
 //  AppGoals
 //
-//  Minimal Keychain wrapper for the RevenueCat secret key.
+//  Minimal Keychain wrapper for provider API keys.
 //
 //  When the shared keychain access group is provisioned (device builds signed by
 //  Xcode with the Keychain Sharing capability), the key is stored there so the
@@ -16,11 +16,11 @@ import Foundation
 import Security
 
 enum KeychainStore {
-    private static func baseQuery(useAccessGroup: Bool) -> [String: Any] {
+    private static func baseQuery(provider: MetricsProvider, useAccessGroup: Bool) -> [String: Any] {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: AppGroupConfig.keychainService,
-            kSecAttrAccount as String: AppGroupConfig.keychainAccount,
+            kSecAttrAccount as String: provider.keychainAccount,
         ]
         if useAccessGroup {
             query[kSecAttrAccessGroup as String] = AppGroupConfig.keychainAccessGroup
@@ -31,25 +31,25 @@ enum KeychainStore {
     /// Stores (or replaces) the API key. Tries the shared access group first, then
     /// falls back to the app-private keychain. Returns false only if both fail.
     @discardableResult
-    static func saveAPIKey(_ key: String) -> Bool {
+    static func saveAPIKey(_ key: String, provider: MetricsProvider = .revenueCat) -> Bool {
         guard let data = key.data(using: .utf8) else { return false }
-        return write(data, useAccessGroup: true) || write(data, useAccessGroup: false)
+        return write(data, provider: provider, useAccessGroup: true) || write(data, provider: provider, useAccessGroup: false)
     }
 
-    private static func write(_ data: Data, useAccessGroup: Bool) -> Bool {
-        var query = baseQuery(useAccessGroup: useAccessGroup)
+    private static func write(_ data: Data, provider: MetricsProvider, useAccessGroup: Bool) -> Bool {
+        var query = baseQuery(provider: provider, useAccessGroup: useAccessGroup)
         SecItemDelete(query as CFDictionary)
         query[kSecValueData as String] = data
         query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         return SecItemAdd(query as CFDictionary, nil) == errSecSuccess
     }
 
-    static func loadAPIKey() -> String? {
-        read(useAccessGroup: true) ?? read(useAccessGroup: false)
+    static func loadAPIKey(provider: MetricsProvider = .revenueCat) -> String? {
+        read(provider: provider, useAccessGroup: true) ?? read(provider: provider, useAccessGroup: false)
     }
 
-    private static func read(useAccessGroup: Bool) -> String? {
-        var query = baseQuery(useAccessGroup: useAccessGroup)
+    private static func read(provider: MetricsProvider, useAccessGroup: Bool) -> String? {
+        var query = baseQuery(provider: provider, useAccessGroup: useAccessGroup)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
 
@@ -62,9 +62,9 @@ enum KeychainStore {
     }
 
     @discardableResult
-    static func deleteAPIKey() -> Bool {
-        let a = SecItemDelete(baseQuery(useAccessGroup: true) as CFDictionary) == errSecSuccess
-        let b = SecItemDelete(baseQuery(useAccessGroup: false) as CFDictionary) == errSecSuccess
+    static func deleteAPIKey(provider: MetricsProvider = .revenueCat) -> Bool {
+        let a = SecItemDelete(baseQuery(provider: provider, useAccessGroup: true) as CFDictionary) == errSecSuccess
+        let b = SecItemDelete(baseQuery(provider: provider, useAccessGroup: false) as CFDictionary) == errSecSuccess
         return a || b
     }
 }

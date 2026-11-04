@@ -45,17 +45,20 @@ struct Provider: TimelineProvider {
 
     /// Attempts a live fetch; falls back to the cached snapshot on any failure.
     private func freshSnapshot() async -> MetricsSnapshot? {
-        let cached = SnapshotStore.load()
-        guard let key = KeychainStore.loadAPIKey() else { return cached }
-        let projectID = AppGroupConfig.defaults.string(forKey: AppGroupConfig.DefaultsKey.projectID) ?? cached?.projectID ?? ""
-        guard !projectID.isEmpty else { return cached }
+        let connection = MetricsConnection.load()
+        let cached = SnapshotStore.load().flatMap { $0.matches(connection) ? $0 : nil }
+        guard let key = KeychainStore.loadAPIKey(provider: connection.provider),
+              !connection.resourceID.isEmpty else { return cached }
         do {
-            let metrics = try await RevenueCatClient().fetchAllMetrics(
-                projectID: projectID, key: key,
+            let metrics = try await MetricsClient().fetchAllMetrics(
+                connection: connection, key: key,
                 useRealtimeRevenue: AppGroupConfig.useRealtimeRevenue,
                 includeResubscriptions: AppGroupConfig.includeResubscriptions
             )
-            let snap = MetricsSnapshot(metrics: metrics, fetchedAt: Date(), projectID: projectID)
+            // A disconnect or provider change may have happened while fetching.
+            guard MetricsConnection.load() == connection else { return nil }
+            let snap = MetricsSnapshot(metrics: metrics, fetchedAt: Date(), projectID: connection.resourceID,
+                                       provider: connection.provider)
             SnapshotStore.save(snap)
             return snap
         } catch {
@@ -64,8 +67,10 @@ struct Provider: TimelineProvider {
     }
 
     private func makeEntry(allowNetwork: Bool, snapshot: MetricsSnapshot?) -> GoalEntry {
+        let connection = MetricsConnection.load()
+        let snapshot = snapshot.flatMap { $0.matches(connection) ? $0 : nil }
         let goal = GoalStore.load()
-        let hasCredentials = KeychainStore.loadAPIKey() != nil
+        let hasCredentials = KeychainStore.loadAPIKey(provider: connection.provider) != nil && !connection.resourceID.isEmpty
         let current = goal.flatMap { g in snapshot?.metric(withID: g.metricID)?.value } ?? goal?.startValue ?? 0
         let newSubsToday: Double? = (goal?.isRevenueGoal == true)
             ? snapshot?.metric(withID: MetricID.newPaidSubscriptions.rawValue)?.value

@@ -2,7 +2,7 @@
 //  SetupView.swift
 //  AppGoals
 //
-//  Onboarding: collect the RevenueCat v2 secret key + project ID, validate them
+//  Onboarding: collect provider credentials, validate them
 //  with a live fetch, then persist.
 //
 
@@ -13,15 +13,14 @@ struct SetupView: View {
     @Environment(\.openURL) private var openURL
 
     @State private var apiKey = ""
-    @State private var projectID = ""
+    @State private var resourceID = ""
+    @State private var provider: MetricsProvider = .revenueCat
     @State private var isWorking = false
     @State private var error: String?
 
-    private let dashboardURL = URL(string: "https://app.revenuecat.com")!
-
     private var canSubmit: Bool {
-        !apiKey.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !projectID.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !resourceID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !isWorking
     }
 
@@ -33,24 +32,36 @@ struct SetupView: View {
                         Image(systemName: "target")
                             .font(.largeTitle)
                             .foregroundStyle(.tint)
-                        Text("Connect RevenueCat")
+                        Text("Connect \(provider.name)")
                             .font(.title2.bold())
-                        Text("AppGoals reads your project's overview metrics so you can set a revenue goal and track progress — on your home and lock screen too.")
+                        Text("Connect your metrics to set a revenue goal and track progress — on your home and lock screen too.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 4)
                 }
 
+                Section("Metrics source") {
+                    Picker("Provider", selection: $provider) {
+                        ForEach(MetricsProvider.allCases) { provider in
+                            Text(provider.name).tag(provider)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .disabled(isWorking)
+                }
+
                 Section("Credentials") {
-                    SecureField("v2 secret key (sk_...)", text: $apiKey)
+                    SecureField(provider == .revenueCat ? "v2 secret key (sk_...)" : "Organization API key", text: $apiKey)
                         .textContentType(.password)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
-                    TextField("Project ID", text: $projectID)
+                    TextField(provider.resourceLabel, text: $resourceID)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+                        .keyboardType(provider == .superwall ? .numberPad : .default)
                 }
+                .disabled(isWorking)
 
                 Section {
                     if let error {
@@ -73,17 +84,31 @@ struct SetupView: View {
 
                 Section("How to get these") {
                     Button {
-                        openURL(dashboardURL)
+                        openURL(provider.dashboardURL)
                     } label: {
-                        Label("Open RevenueCat", systemImage: "safari")
+                        Label("Open \(provider.name)", systemImage: "safari")
                     }
-                    Text("Opens RevenueCat in your browser. Pick your project — the code in its URL (`/projects/`**`<id>`**`/…`) is your **Project ID** — then open **API keys** and create a **v2 secret key** with the `charts_metrics:overview:read` and `charts_metrics:charts:read` permissions.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    if provider == .revenueCat {
+                        Text("Pick your project — the code after /projects/ in its URL is your Project ID. Open API keys and create a v2 secret key with charts_metrics:overview:read and charts_metrics:charts:read permissions.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("In Superwall's organization settings, open API Keys (Access Controls) and create a key with Charts read access for your app's project. Select your app and copy its numeric Application ID from the dashboard URL. The public pk_ SDK key cannot read metrics.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Text("Tracks MRR, 28-day revenue, active paid subscriptions, and today's paid starts. Revenue is in USD. Revenue Tracking must be configured in Superwall.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .navigationTitle("AppGoals")
             .dismissKeyboardSupport()
+            .onChange(of: provider) {
+                apiKey = ""
+                resourceID = ""
+                error = nil
+            }
         }
     }
 
@@ -91,7 +116,7 @@ struct SetupView: View {
         isWorking = true
         error = nil
         defer { isWorking = false }
-        let ok = await model.saveCredentials(apiKey: apiKey, projectID: projectID)
+        let ok = await model.saveCredentials(apiKey: apiKey, resourceID: resourceID, provider: provider)
         if !ok { error = model.lastError ?? "Couldn't validate those credentials." }
     }
 }

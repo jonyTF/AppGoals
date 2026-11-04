@@ -103,7 +103,7 @@ struct DashboardView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             if model.metrics.isEmpty {
                 ContentUnavailableView("No metrics yet", systemImage: "chart.bar",
-                                       description: Text("Pull to refresh to load your RevenueCat metrics."))
+                                       description: Text("Pull to refresh to load your \(model.connection.provider.name) metrics."))
             } else {
                 LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(model.metrics) { metric in

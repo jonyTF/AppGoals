@@ -13,6 +13,31 @@ struct MetricsSnapshot: Codable, Hashable {
     var metrics: [OverviewMetric]
     var fetchedAt: Date
     var projectID: String
+    var provider: MetricsProvider = .revenueCat
+
+    init(metrics: [OverviewMetric], fetchedAt: Date, projectID: String,
+         provider: MetricsProvider = .revenueCat) {
+        self.metrics = metrics
+        self.fetchedAt = fetchedAt
+        self.projectID = projectID
+        self.provider = provider
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case metrics, fetchedAt, projectID, provider
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        metrics = try values.decode([OverviewMetric].self, forKey: .metrics)
+        fetchedAt = try values.decode(Date.self, forKey: .fetchedAt)
+        projectID = try values.decode(String.self, forKey: .projectID)
+        provider = try values.decodeIfPresent(MetricsProvider.self, forKey: .provider) ?? .revenueCat
+    }
+
+    func matches(_ connection: MetricsConnection) -> Bool {
+        provider == connection.provider && projectID == connection.resourceID
+    }
 
     func metric(withID id: String) -> OverviewMetric? {
         metrics.first { $0.id == id }
